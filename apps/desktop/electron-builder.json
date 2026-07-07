@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.vehicle-visual.app",
+  "productName": "车载可视化系统",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "../frontend/dist/**/*",
+    "../../database/**/*",
+    "../../config/**/*",
+    "../../dbc/**/*"
+  ],
+  "win": {
+    "target": ["portable", "nsis"],
+    "icon": null
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "icon": null
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "shortcutName": "车载可视化系统"
+  }
+}

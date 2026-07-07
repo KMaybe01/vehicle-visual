@@ -1,0 +1,43 @@
+system:
+  name: "车载可视化系统"
+  version: "0.1.0"
+  environment: "development"  # development | production
+
+server:
+  port: 3100
+  host: "0.0.0.0"
+
+websocket:
+  namespace: "/vehicle"
+  interval: 50  # ms, 数据推送频率
+
+database:
+  path: "./database/vehicle.db"
+  type: "sqljs"
+
+can:
+  adapter: "simulator"  # simulator | socketcan | zlg
+  interface: "can0"
+  bitrate: 500000
+
+vehicle:
+  maxSpeed: 180
+  maxRpm: 8000
+  wheelBase: 2.8
+  tireCirc: 2.05
+
+alarm:
+  coolantTemp:
+    warning: 95
+    critical: 105
+  batteryVoltage:
+    warning: 11.5
+    critical: 10.5
+  rpm:
+    warning: 6000
+    critical: 7000
+
+display:
+  fps: 30
+  darkMode: true
+  language: "zh-CN"

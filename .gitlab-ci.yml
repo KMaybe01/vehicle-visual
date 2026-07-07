@@ -1,0 +1,51 @@
+image: oven/bun:latest
+
+stages:
+  - setup
+  - check
+  - build
+
+variables:
+  # 禁用 Turbo 的遥测
+  TURBO_TELEMETRY_DISABLED: 1
+  # 指定 Bun 缓存目录，方便 GitLab CI 进行缓存
+  BUN_INSTALL_CACHE_DIR: "$CI_PROJECT_DIR/.bun-cache"
+
+# 1. 安装依赖阶段
+install:
+  stage: setup
+  script:
+    - bun install --frozen-lockfile
+  artifacts:
+    name: "node_modules-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - node_modules/
+      - apps/*/node_modules/
+      - packages/*/node_modules/
+    expire_in: 2 hours
+
+# 2. 代码检查与格式化阶段
+lint:
+  stage: check
+  script:
+    - bun run format:check
+    - bun run lint
+  dependencies:
+    - install
+
+# 3. 构建阶段
+build:
+  stage: build
+  script:
+    - bun run build
+  dependencies:
+    - install
+  artifacts:
+    name: "build-artifacts-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - apps/*/dist/
+      - apps/*/build/
+      - apps/*/out/
+      - apps/desktop/release/
+    expire_in: 1 week
+    when: always

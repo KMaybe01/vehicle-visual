@@ -1,0 +1,62 @@
+VERSION "1.0"
+
+NS_ :
+
+BS_:
+
+BU_: ECU
+
+BO_ 100 VehicleSpeed: 8 ECU
+ SG_ Speed : 0|16@1+ (0.01,0) [0|327.67] "km/h" ECU
+
+BO_ 200 EngineData: 8 ECU
+ SG_ RPM : 0|16@1+ (0.125,0) [0|8191.75] "r/min" ECU
+ SG_ CoolantTemp : 16|8@1+ (1,-40) [-40|215] "degC" ECU
+ SG_ ThrottlePos : 24|8@1+ (0.5,0) [0|100] "%" ECU
+
+BO_ 300 ElectricalData: 8 ECU
+ SG_ BatteryVoltage : 0|16@1+ (0.001,0) [0|65.535] "V" ECU
+
+BO_ 400 BodyStatus: 8 ECU
+ SG_ DoorFL : 0|1@1+ (1,0) [0|1] "" ECU
+ SG_ DoorFR : 1|1@1+ (1,0) [0|1] "" ECU
+ SG_ DoorRL : 2|1@1+ (1,0) [0|1] "" ECU
+ SG_ DoorRR : 3|1@1+ (1,0) [0|1] "" ECU
+ SG_ BrakePedal : 4|1@1+ (1,0) [0|1] "" ECU
+ SG_ GearPosition : 8|4@1+ (1,0) [0|15] "" ECU
+
+BO_ 500 TirePressure: 8 ECU
+ SG_ TireFL : 0|16@1+ (0.01,0) [0|6.55] "bar" ECU
+ SG_ TireFR : 16|16@1+ (0.01,0) [0|6.55] "bar" ECU
+ SG_ TireRL : 32|16@1+ (0.01,0) [0|6.55] "bar" ECU
+ SG_ TireRR : 48|16@1+ (0.01,0) [0|6.55] "bar" ECU
+
+BO_ 600 SteeringInfo: 8 ECU
+ SG_ SteeringAngle : 0|16@1- (0.1,0) [-3276.8|3276.7] "deg" ECU
+
+BO_ 700 Odometer: 8 ECU
+ SG_ Odometer : 0|32@1+ (0.1,0) [0|429496729.5] "km" ECU
+
+BO_ 800 FuelSystem: 8 ECU
+ SG_ FuelLevel : 0|8@1+ (0.5,0) [0|100] "%" ECU
+
+CM_ SG_ 100 Speed "车速";
+CM_ SG_ 200 RPM "发动机转速";
+CM_ SG_ 200 CoolantTemp "冷却液温度";
+CM_ SG_ 200 ThrottlePos "节气门开度";
+CM_ SG_ 300 BatteryVoltage "电池电压";
+CM_ SG_ 400 DoorFL "左前门状态";
+CM_ SG_ 400 DoorFR "右前门状态";
+CM_ SG_ 400 DoorRL "左后门状态";
+CM_ SG_ 400 DoorRR "右后门状态";
+CM_ SG_ 400 BrakePedal "制动踏板状态";
+CM_ SG_ 400 GearPosition "档位";
+CM_ SG_ 500 TireFL "左前轮胎压";
+CM_ SG_ 500 TireFR "右前轮胎压";
+CM_ SG_ 500 TireRL "左后轮胎压";
+CM_ SG_ 500 TireRR "右后轮胎压";
+CM_ SG_ 600 SteeringAngle "方向盘转角";
+CM_ SG_ 700 Odometer "里程";
+CM_ SG_ 800 FuelLevel "燃油液位";
+
+VAL_ 400 GearPosition 0 "P" 1 "R" 2 "N" 3 "D" 4 "1" 5 "2" 6 "3" 7 "4" 8 "5";
