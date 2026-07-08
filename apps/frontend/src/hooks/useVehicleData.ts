@@ -1,14 +1,21 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { socket } from '../socket';
 import { useVehicleStore } from '../store';
 import type { UserControl, VehicleState } from '../types';
 
+const THROTTLE_MS = 200;
+
 export function useVehicleData() {
   const setCurrentData = useVehicleStore((s) => s.setCurrentData);
   const addHistory = useVehicleStore((s) => s.addHistory);
+  const lastTime = useRef(0);
 
   useEffect(() => {
     const handleData = (data: VehicleState) => {
+      const now = Date.now();
+      if (now - lastTime.current < THROTTLE_MS) return;
+      lastTime.current = now;
+
       setCurrentData(data);
       addHistory(data);
     };

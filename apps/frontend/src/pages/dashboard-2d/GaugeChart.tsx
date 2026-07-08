@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 interface GaugeChartProps {
   label: string;
@@ -9,7 +9,7 @@ interface GaugeChartProps {
   color: string;
 }
 
-export default function GaugeChart({ label, value, unit, min, max, color }: GaugeChartProps) {
+function GaugeChart({ label, value, unit, min, max, color }: GaugeChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastValueRef = useRef<number | null>(null);
   const lastColorRef = useRef<string | null>(null);
@@ -85,3 +85,5 @@ export default function GaugeChart({ label, value, unit, min, max, color }: Gaug
     </div>
   );
 }
+
+export default memo(GaugeChart);

@@ -3,9 +3,19 @@ import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
+
+const MAX_POINTS = 120;
+
+function downsample<T>(arr: T[], max: number): T[] {
+  if (arr.length <= max) return arr;
+  const step = Math.ceil(arr.length / max);
+  const result: T[] = [];
+  for (let i = 0; i < arr.length; i += step) result.push(arr[i]);
+  return result;
+}
 
 interface TrendChartProps {
   data: {
@@ -20,11 +30,11 @@ interface TrendChartProps {
   unit: string;
 }
 
-export default function TrendChart({ data, dataKey, color, unit }: TrendChartProps) {
+function TrendChart({ data, dataKey, color, unit }: TrendChartProps) {
   const option = useMemo(() => {
-    const values = data.map((d) => d[dataKey]);
-
-    const labels = data.map((d) => {
+    const sampled = downsample(data, MAX_POINTS);
+    const values = sampled.map((d) => d[dataKey]);
+    const labels = sampled.map((d) => {
       const s = Math.floor((Date.now() - d.timestamp) / 1000);
       return `-${s}s`;
     });
@@ -80,3 +90,5 @@ export default function TrendChart({ data, dataKey, color, unit }: TrendChartPro
     />
   );
 }
+
+export default memo(TrendChart);

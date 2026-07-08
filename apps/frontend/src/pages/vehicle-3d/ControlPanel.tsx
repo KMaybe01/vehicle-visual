@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { emitReset, emitToggleDriving } from '../../hooks/useVehicleData';
 import { useVehicleStore } from '../../store';
 import type { UserControl } from '../../types';
 
-export default function ControlPanel({
+function ControlPanel({
   controlRef,
   setControl,
 }: {
@@ -175,3 +175,5 @@ export default function ControlPanel({
     </div>
   );
 }
+
+export default memo(ControlPanel);

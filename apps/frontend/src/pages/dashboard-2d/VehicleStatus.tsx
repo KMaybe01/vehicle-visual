@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { VehicleState } from '../../types';
 
 interface Props {
@@ -11,7 +12,7 @@ const doorLabels: Record<keyof VehicleState['doorStatus'], string> = {
   rearRight: '右后门',
 };
 
-export default function VehicleStatus({ data }: Props) {
+function VehicleStatus({ data }: Props) {
   return (
     <>
       <div className="card">
@@ -124,6 +125,28 @@ export default function VehicleStatus({ data }: Props) {
     </>
   );
 }
+
+function arePropsEqual(a: Props, b: Props) {
+  return (
+    a.data.speed === b.data.speed &&
+    a.data.rpm === b.data.rpm &&
+    a.data.coolantTemp === b.data.coolantTemp &&
+    a.data.batteryVoltage === b.data.batteryVoltage &&
+    a.data.throttlePos === b.data.throttlePos &&
+    a.data.brakePressed === b.data.brakePressed &&
+    a.data.steeringAngle === b.data.steeringAngle &&
+    a.data.odometer === b.data.odometer &&
+    a.data.fuelLevel === b.data.fuelLevel &&
+    a.data.gearPosition === b.data.gearPosition &&
+    a.data.turnSignal === b.data.turnSignal &&
+    a.data.faultCodes.length === b.data.faultCodes.length &&
+    a.data.faultCodes.every((c, i) => c === b.data.faultCodes[i])
+  );
+}
+
+const MemoizedVehicleStatus = memo(VehicleStatus, arePropsEqual);
+
+export default MemoizedVehicleStatus;
 
 function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (

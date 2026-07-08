@@ -235,7 +235,7 @@ function Interior() {
   );
 }
 
-function CarModel() {
+const CarModel = memo(function CarModel() {
   const data = useVehicleStore((s) => s.currentData);
   const brakeMat = useRef<THREE.MeshStandardMaterial>(null);
   const sigL = useRef<THREE.MeshStandardMaterial>(null);
@@ -398,7 +398,7 @@ function CarModel() {
       <Wheel pos={wPos.rr} rotation={wheelRot} steer={0} />
     </group>
   );
-}
+});
 
 type BuildingData = { baseZ: number; side: number; height: number; width: number; hue: number };
 
@@ -626,7 +626,7 @@ function Road({ scroll }: { scroll: React.MutableRefObject<number> }) {
   );
 }
 
-function DataOverlay() {
+const DataOverlay = memo(function DataOverlay() {
   const data = useVehicleStore((s) => s.currentData);
 
   const blink = useMemo(() => {
@@ -709,7 +709,7 @@ function DataOverlay() {
       </div>
     </Html>
   );
-}
+});
 
 function SceneLights() {
   return (
