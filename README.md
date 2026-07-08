@@ -82,6 +82,8 @@ cd apps/desktop
 bun run dev
 ```
 
+> **注意**: 前端默认对每 50ms 到达的 WebSocket 数据做了 **200ms 限流**，并使用 **RingBuffer** 存储最近 500 条历史记录，避免高频更新导致浏览器 OOM。如需调整，修改 `apps/frontend/src/hooks/useVehicleData.ts` 中的 `THROTTLE_MS` 和 `apps/frontend/src/store.ts` 中的 `MAX_HISTORY`。
+
 *   **Web 预览**: 浏览器打开 `http://localhost:5173`
 *   **后端 API**: 默认运行于 `http://localhost:3100`
 
