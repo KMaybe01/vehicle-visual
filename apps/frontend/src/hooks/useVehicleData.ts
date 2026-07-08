@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { socket } from '../socket';
 import { useVehicleStore } from '../store';
+import { TOPIC, setTopic } from '../topics';
 import type { UserControl, VehicleState } from '../types';
 
 const THROTTLE_MS = 200;
@@ -18,6 +19,7 @@ export function useVehicleData() {
 
       setCurrentData(data);
       addHistory(data);
+      setTopic(TOPIC.VEHICLE_STATE, data);
     };
 
     socket.on('vehicleData', handleData);

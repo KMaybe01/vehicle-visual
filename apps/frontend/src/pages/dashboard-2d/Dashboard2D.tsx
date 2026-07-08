@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import PlaybackBar from '../../components/PlaybackBar/PlaybackBar';
 import { emitReset, emitToggleDriving } from '../../hooks/useVehicleData';
 import { useVehicleStore } from '../../store';
+import { TOPIC, useTopic } from '../../topics';
 import type { VehicleState } from '../../types';
 import GaugeChart from './GaugeChart';
 import TrendChart from './TrendChart';
@@ -34,10 +36,12 @@ function useThrottledValue<T>(value: T, intervalMs: number): T {
 export default function Dashboard2D() {
   const data = useVehicleStore((s) => s.currentData);
   const history = useVehicleStore((s) => s.historyData);
+  const playbackData = useTopic<VehicleState>(TOPIC.VEHICLE_STATE);
 
   const chartHistory: VehicleState[] = useThrottledValue(history, 500);
+  const displayData = playbackData ?? data;
 
-  if (!data) {
+  if (!displayData) {
     return (
       <div className="loading-screen">
         <div className="loading-spinner" />
@@ -52,7 +56,7 @@ export default function Dashboard2D() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1>车载仪表盘</h1>
-            <p>实时车况数据监控 / 50ms 刷新</p>
+            <p>实时车况数据监控</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn btn-ghost" onClick={emitToggleDriving}>
@@ -65,12 +69,14 @@ export default function Dashboard2D() {
         </div>
       </div>
 
+      <PlaybackBar />
+
       <div className="dashboard-grid">
         <div className="dashboard-main">
           <div className="gauges-row">
             <GaugeChart
               label="车速"
-              value={data.speed}
+              value={displayData.speed}
               unit="km/h"
               min={0}
               max={180}
@@ -78,7 +84,7 @@ export default function Dashboard2D() {
             />
             <GaugeChart
               label="发动机转速"
-              value={data.rpm}
+              value={displayData.rpm}
               unit="r/min"
               min={0}
               max={8000}
@@ -86,15 +92,15 @@ export default function Dashboard2D() {
             />
             <GaugeChart
               label="冷却液温度"
-              value={data.coolantTemp}
+              value={displayData.coolantTemp}
               unit="°C"
               min={0}
               max={120}
-              color={data.coolantTemp > 95 ? '#ef4444' : '#eab308'}
+              color={displayData.coolantTemp > 95 ? '#ef4444' : '#eab308'}
             />
             <GaugeChart
               label="电池电压"
-              value={data.batteryVoltage}
+              value={displayData.batteryVoltage}
               unit="V"
               min={8}
               max={16}
@@ -115,7 +121,7 @@ export default function Dashboard2D() {
         </div>
 
         <aside className="dashboard-sidebar">
-          <VehicleStatus data={data} />
+          <VehicleStatus data={displayData} />
         </aside>
       </div>
     </div>

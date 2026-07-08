@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CanBusModule } from './modules/can-bus/can-bus.module';
 import { ConfigModule } from './modules/config/config.module';
 import { FaultModule } from './modules/fault/fault.module';
+import { FoxgloveModule } from './modules/foxglove/foxglove.module';
 import { RecordModule } from './modules/record/record.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { RecordModule } from './modules/record/record.module';
     FaultModule,
     RecordModule,
     ConfigModule,
+    FoxgloveModule,
   ],
 })
 export class AppModule {}

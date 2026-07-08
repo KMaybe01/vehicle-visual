@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { TOPIC, setTopic } from './topics';
 import type { FaultRecord, VehicleState } from './types';
 
 const MAX_HISTORY = 500;
@@ -41,7 +42,9 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
   setCurrentData: (data) => set({ currentData: data }),
   addHistory: (data) => {
     ring.push(data);
-    set({ historyData: ring.toArray() });
+    const arr = ring.toArray();
+    set({ historyData: arr });
+    setTopic(TOPIC.VEHICLE_HISTORY, arr);
   },
   setFaults: (faults) => set({ faults }),
   setRecording: (recording) => set({ isRecording: recording }),

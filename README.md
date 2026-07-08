@@ -4,10 +4,11 @@
 
 ## ✨ 核心特性
 
-*   **2D 仪表盘**：包含基于 Canvas/ECharts 的车速、转速、水温、电压表盘，以及时序趋势曲线（60秒滑动窗口）。支持车门、胎压、状态面板监测。
+*   **2D 仪表盘**：包含基于 Canvas/ECharts 的车速、转速、水温、电压表盘，以及时序趋势曲线（60秒滑动窗口）。支持车门、胎压、状态面板监测。内置 PlaybackBar 支持历史数据回放。
 *   **3D 数字孪生**：基于 ThreeJS/React-Three-Fiber 实现的 3D 车辆模型，带滚动驾驶环境（道路标线动画、InstancedMesh 建筑物/树木/路灯），实时联动车况数据（车速驱动场景滚动、刹车灯/转向灯/大灯动画、转向轮偏转），使用 Clock + `useFrame(delta)` 实现帧率无关的平滑动画。
 *   **故障监控与管理**：实时解析 CAN 故障码并分类（轻微/一般/严重），支持故障日志记录、清除、历史查询及弹窗告警。
-*   **数据录制与回放**：支持运行中车况数据的实时录制、持久化及 JSON 格式导出与管理。
+*   **数据录制与回放**：支持运行中车况数据的实时录制、持久化及 JSON/MCAP 格式导出与管理。
+*   **Foxglove 集成**：兼容 [Foxglove](https://foxglove.dev) WebSocket 协议，Foxglove Desktop 可实时连接 `ws://localhost:3101` 查看车况数据。支持导出 MCAP 标准格式文件。
 *   **跨平台桌面端**：基于 Electron 打包，支持在 Windows、Linux (包含 ARM64 车机端) 平台独立运行。
 
 ---
@@ -25,6 +26,8 @@
 | **前端应用** | **React 19 + Vite + TypeScript** | 提供 2D (ECharts) / 3D (@react-three/fiber) 数据渲染 |
 | **后端网关** | **NestJS 11** | 提供 CAN 总线数据采集、持久化及 API 服务 |
 | **实时通信** | **Socket.IO** | 前后端基于 WebSocket 的低延迟实时数据推送 |
+| **Foxglove 协议** | **@foxglove/ws-protocol** | Foxglove Desktop 兼容的 WebSocket 数据桥接 (`ws://localhost:3101`) |
+| **MCAP 导出** | **@mcap/core** | 行业标准 MCAP 格式录制导出，兼容 Foxglove/WebViz 等工具 |
 | **数据存储** | **SQLite** | 轻量级本地数据库，存储故障及录制配置数据 |
 | **持续集成** | **GitLab CI** | 内置 `.gitlab-ci.yml` 自动化依赖检查、格式化与构建 |
 
@@ -39,13 +42,19 @@ vehicle-visual/
 │   │   └── src/modules/
 │   │       ├── can-bus/      # CAN 数据采集与 WebSocket 推送
 │   │       ├── fault/        # 故障码管理 (CRUD)
+│   │       ├── foxglove/     # Foxglove WS 协议桥接 + MCAP 导出
 │   │       ├── record/       # 数据录制与导出
 │   │       └── config/       # 系统配置读取
 │   ├── frontend/             # [React] 可视化前端
-│   │   └── src/pages/
-│   │       ├── dashboard-2d/ # 2D 仪表盘面板
-│   │       ├── vehicle-3d/   # 3D 数字孪生面板
-│   │       └── log-manage/   # 故障日志与录制管理界面
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   ├── Panel/        # Foxglove 风格 Panel 容器 (可拖拽工具栏)
+│   │   │   │   └── PlaybackBar/ # 时间轴回放控制器 (播放/暂停/速率)
+│   │   │   ├── topics.ts        # Topic 数据总线 (发布/订阅)
+│   │   │   └── pages/
+│   │   │       ├── dashboard-2d/ # 2D 仪表盘面板
+│   │   │       ├── vehicle-3d/   # 3D 数字孪生面板
+│   │   │       └── log-manage/   # 故障日志与录制管理界面
 │   └── desktop/              # [Electron] 桌面客户端外壳
 ├── packages/
 │   └── can-simulator/        # [Library] CAN 数据模拟器及公共类型定义
@@ -109,6 +118,47 @@ bun run format:check  # 仅检查代码格式是否合规 (CI 环境常用)
 *   WebSocket 刷新频率
 *   CAN 模拟器数据上下限
 *   异常告警阈值设定
+
+---
+
+## 🧩 Foxglove 集成
+
+本项目深度参考 [Foxglove](https://foxglove.dev) 的设计模式，实现了一套轻量级的数据可视化架构。
+
+### Foxglove 协议桥接
+
+后端内置 **Foxglove WebSocket 服务器** (`ws://localhost:3101`)，使用 `@foxglove/ws-protocol` 实现与 Foxglove Desktop 的原生兼容：
+
+```bash
+# Foxglove Desktop 中连接
+ws://localhost:3101
+```
+
+连接后即可实时查看 `/vehicle/state` 话题的 JSON 数据流。
+
+### MCAP 格式导出
+
+录制数据支持导出为 **MCAP** (v0) 标准格式：
+
+```
+GET /api/foxglove/export/:recordId
+```
+
+MCAP 文件可导入 Foxglove Desktop、WebViz 等工具进行离线分析。
+
+### 前端 Topic 数据总线
+
+参考 Foxglove 的话题路由模式，前端实现了轻量级 **Topic 发布/订阅系统** (`src/topics.ts`)，组件通过 `useTopic()` Hook 按需订阅数据，避免全局 store 滥用。
+
+| Topic | 数据类型 | 说明 |
+| :--- | :--- | :--- |
+| `/vehicle/state` | `VehicleState` | 当前车况数据 |
+| `/vehicle/history` | `VehicleState[]` | 历史数据 (最近 500 条) |
+
+### Panel 容器 & 回放控制器
+
+- **`<Panel>`**：通用面板容器组件，提供标题栏、工具栏插槽，替换原始 `.card` 模式
+- **`<PlaybackBar>`**：时间轴回放控件，支持 **播放/暂停**、**0.25x–5x 速率调节**，通过 topic 推送回放数据，所有订阅面板自动响应
 
 ---
 
