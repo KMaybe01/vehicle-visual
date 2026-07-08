@@ -43,3 +43,12 @@ export interface RecordFile {
   sampleCount: number;
   size: number;
 }
+
+export interface UserControl {
+  throttle: number;
+  brake: boolean;
+  steeringAngle: number;
+  gearPosition: string;
+  turnSignal: 'none' | 'left' | 'right' | 'hazard';
+  manualMode: boolean;
+}

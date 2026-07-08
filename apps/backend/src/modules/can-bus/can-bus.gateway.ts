@@ -6,6 +6,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import type { UserControl } from '@vehicle-visual/can-simulator';
 import { Server, Socket } from 'socket.io';
 import { CanBusService } from './can-bus.service';
 
@@ -45,6 +46,11 @@ export class CanBusGateway implements OnGatewayInit, OnGatewayConnection {
   @SubscribeMessage('toggleDriving')
   handleToggleDriving() {
     this.canBusService.toggleDriving();
+  }
+
+  @SubscribeMessage('vehicleControl')
+  handleVehicleControl(_client: Socket, control: UserControl) {
+    this.canBusService.applyControls(control);
   }
 
   @SubscribeMessage('reset')

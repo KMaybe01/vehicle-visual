@@ -20,6 +20,11 @@ export class FaultController {
     return this.faultService.getFaultStats();
   }
 
+  @Get('timeline')
+  getTimeline() {
+    return this.faultService.getFaultTimeline();
+  }
+
   @Post(':code/clear')
   @HttpCode(200)
   clearFault(@Param('code') code: string) {

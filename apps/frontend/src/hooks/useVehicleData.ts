@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { socket } from '../socket';
 import { useVehicleStore } from '../store';
-import type { VehicleState } from '../types';
+import type { UserControl, VehicleState } from '../types';
 
 export function useVehicleData() {
   const setCurrentData = useVehicleStore((s) => s.setCurrentData);
@@ -40,4 +40,8 @@ export function emitToggleDriving() {
 
 export function emitReset() {
   socket.emit('reset');
+}
+
+export function emitVehicleControl(control: UserControl) {
+  socket.emit('vehicleControl', control);
 }

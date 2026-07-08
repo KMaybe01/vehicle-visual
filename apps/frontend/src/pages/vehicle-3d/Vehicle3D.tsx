@@ -1,9 +1,11 @@
-import { Html, OrbitControls } from '@react-three/drei';
+import { Html, OrbitControls, RoundedBox } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, memo, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useVehicleControl } from '../../hooks/useVehicleControl';
 import { emitReset, emitToggleDriving } from '../../hooks/useVehicleData';
 import { useVehicleStore } from '../../store';
+import ControlPanel from './ControlPanel';
 import './Vehicle3D.css';
 
 const LOOP_DISTANCE = 600;
@@ -14,13 +16,8 @@ const NUM_BUILDINGS_PER_SIDE = 20;
 const NUM_TREES_PER_SIDE = 40;
 const NUM_LIGHTS_PER_SIDE = 15;
 
-const bodyGeo = new THREE.BoxGeometry(0.9, 0.25, 1.8);
-const cabinGeo = new THREE.BoxGeometry(0.82, 0.25, 0.9);
-const roofGeo = new THREE.BoxGeometry(0.8, 0.12, 0.5);
-const windshieldGeo = new THREE.BoxGeometry(0.7, 0.05, 0.3);
 const headlightGeo = new THREE.SphereGeometry(0.04, 8, 8);
 const taillightGeo = new THREE.SphereGeometry(0.04, 8, 8);
-const wheelGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12);
 const roadGeo = new THREE.PlaneGeometry(LOOP_DISTANCE, 7.5);
 const centerLineGeo = new THREE.PlaneGeometry(LOOP_DISTANCE, 0.04);
 const laneDashGeo = new THREE.PlaneGeometry(3, 0.12);
@@ -34,10 +31,16 @@ const brakeColor = new THREE.Color('#ef4444');
 const brakeBright = new THREE.Color('#ff2222');
 const signalAmber = new THREE.Color('#ff8800');
 
-const wFL: [number, number, number] = [0.38, 0.1, 0.5];
-const wFR: [number, number, number] = [-0.38, 0.1, 0.5];
-const wRL: [number, number, number] = [0.38, 0.1, -0.5];
-const wRR: [number, number, number] = [-0.38, 0.1, -0.5];
+const TIRE_R = 0.09;
+const TIRE_H = 0.07;
+const WHEEL_TRACK = 0.38;
+const WHEELBASE = 0.52;
+const wPos = {
+  fl: [WHEEL_TRACK, TIRE_R, WHEELBASE] as const,
+  fr: [-WHEEL_TRACK, TIRE_R, WHEELBASE] as const,
+  rl: [WHEEL_TRACK, TIRE_R, -WHEELBASE] as const,
+  rr: [-WHEEL_TRACK, TIRE_R, -WHEELBASE] as const,
+};
 
 const centerMat = new THREE.MeshStandardMaterial({
   color: '#e2e8f0',
@@ -59,6 +62,11 @@ const treeCrownMat = new THREE.MeshStandardMaterial({ color: '#2d5a27' });
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
 
+const wheelTireGeo = new THREE.CylinderGeometry(TIRE_R, TIRE_R, TIRE_H, 16);
+const wheelRimGeo = new THREE.CylinderGeometry(TIRE_R * 0.55, TIRE_R * 0.55, TIRE_H * 1.05, 12);
+const wheelHubGeo = new THREE.CylinderGeometry(TIRE_R * 0.15, TIRE_R * 0.15, TIRE_H * 1.1, 8);
+const spokeGeo = new THREE.BoxGeometry(TIRE_R * 0.5, TIRE_H * 1.1, 0.008);
+
 const Wheel = memo(function Wheel({
   pos,
   rotation,
@@ -66,12 +74,166 @@ const Wheel = memo(function Wheel({
 }: { pos: readonly [number, number, number]; rotation: number; steer: number }) {
   return (
     <group position={pos} rotation={[0, steer, 0]}>
-      <mesh rotation={[0, 0, rotation]} geometry={wheelGeo}>
-        <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
-      </mesh>
+      <group rotation={[0, 0, rotation]}>
+        <mesh geometry={wheelTireGeo}>
+          <meshStandardMaterial color="#1a1a1a" roughness={0.95} />
+        </mesh>
+        <mesh geometry={wheelRimGeo} position={[0, 0, 0]}>
+          <meshStandardMaterial color="#c0c0c0" metalness={0.8} roughness={0.3} />
+        </mesh>
+        {[0, Math.PI / 3, (2 * Math.PI) / 3, Math.PI, (4 * Math.PI) / 3, (5 * Math.PI) / 3].map(
+          (a) => (
+            <mesh key={a} geometry={spokeGeo} rotation={[0, 0, a]}>
+              <meshStandardMaterial color="#aaa" metalness={0.7} roughness={0.4} />
+            </mesh>
+          ),
+        )}
+        <mesh geometry={wheelHubGeo}>
+          <meshStandardMaterial color="#888" metalness={0.6} roughness={0.4} />
+        </mesh>
+      </group>
     </group>
   );
 });
+
+function CarBody({ color }: { color: string }) {
+  return (
+    <group>
+      <RoundedBox args={[0.86, 0.24, 1.92]} radius={0.06} smoothness={3}>
+        <meshPhysicalMaterial color={color} metalness={0.55} roughness={0.3} clearcoat={0.15} />
+      </RoundedBox>
+      <RoundedBox args={[0.72, 0.1, 0.58]} radius={0.04} smoothness={3} position={[0, 0.18, 0.58]}>
+        <meshPhysicalMaterial color={color} metalness={0.5} roughness={0.3} clearcoat={0.1} />
+      </RoundedBox>
+      <RoundedBox
+        args={[0.68, 0.08, 0.48]}
+        radius={0.04}
+        smoothness={3}
+        position={[0, 0.17, -0.64]}
+      >
+        <meshPhysicalMaterial color={color} metalness={0.5} roughness={0.3} clearcoat={0.1} />
+      </RoundedBox>
+      <RoundedBox args={[0.92, 0.03, 0.05]} radius={0.02} position={[0, -0.1, 0.98]}>
+        <meshStandardMaterial color="#222" roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[0.92, 0.03, 0.05]} radius={0.02} position={[0, -0.1, -0.98]}>
+        <meshStandardMaterial color="#222" roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[0.12, 0.06, 0.02]} radius={0.01} position={[0, 0.04, 0.97]}>
+        <meshStandardMaterial color="#111" metalness={0.9} roughness={0.2} />
+      </RoundedBox>
+      <RoundedBox args={[0.1, 0.05, 0.02]} radius={0.01} position={[0, 0.04, 0.97]}>
+        <meshStandardMaterial color="#333" metalness={0.8} roughness={0.3} />
+      </RoundedBox>
+      <mesh position={[0.38, -0.04, 0.65]}>
+        <boxGeometry args={[0.02, 0.18, 0.32]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.38, -0.04, 0.65]}>
+        <boxGeometry args={[0.02, 0.18, 0.32]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.4} />
+      </mesh>
+      <mesh position={[0.38, -0.04, -0.65]}>
+        <boxGeometry args={[0.02, 0.18, 0.32]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.38, -0.04, -0.65]}>
+        <boxGeometry args={[0.02, 0.18, 0.32]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function Cabin({ color }: { color: string }) {
+  const glassMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: '#1a1a2e',
+        metalness: 0.9,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.45,
+        envMapIntensity: 1.5,
+      }),
+    [],
+  );
+  return (
+    <group>
+      <RoundedBox
+        args={[0.78, 0.02, 0.68]}
+        radius={0.04}
+        smoothness={3}
+        position={[0, 0.38, -0.06]}
+      >
+        <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.25} />
+      </RoundedBox>
+      <mesh position={[0, 0.31, 0.4]} rotation={[0.45, 0, 0]}>
+        <planeGeometry args={[0.74, 0.26]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[0, 0.34, -0.5]} rotation={[-0.35, 0, 0]}>
+        <planeGeometry args={[0.7, 0.22]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[0.4, 0.28, -0.06]} rotation={[0, 0, 0.15]}>
+        <planeGeometry args={[0.22, 0.22]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[-0.4, 0.28, -0.06]} rotation={[0, 0, -0.15]}>
+        <planeGeometry args={[0.22, 0.22]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[0.4, 0.28, 0.2]} rotation={[0, 0, 0.15]}>
+        <planeGeometry args={[0.18, 0.24]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[-0.4, 0.28, 0.2]} rotation={[0, 0, -0.15]}>
+        <planeGeometry args={[0.18, 0.24]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[0.4, 0.2, 0.4]} rotation={[0.45, 0, 0.15]}>
+        <planeGeometry args={[0.1, 0.2]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[-0.4, 0.2, 0.4]} rotation={[0.45, 0, -0.15]}>
+        <planeGeometry args={[0.1, 0.2]} />
+        <meshPhysicalMaterial {...glassMat} />
+      </mesh>
+      <mesh position={[0, 0.2, 0.3]}>
+        <boxGeometry args={[0.74, 0.02, 0.02]} />
+        <meshStandardMaterial color="#ddd" metalness={0.5} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.18, -0.2]}>
+        <boxGeometry args={[0.72, 0.02, 0.02]} />
+        <meshStandardMaterial color="#ddd" metalness={0.5} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+function Interior() {
+  return (
+    <group>
+      <RoundedBox args={[0.22, 0.08, 0.14]} radius={0.02} position={[0.18, 0.08, 0.22]}>
+        <meshStandardMaterial color="#222" roughness={0.8} />
+      </RoundedBox>
+      <RoundedBox args={[0.22, 0.08, 0.14]} radius={0.02} position={[-0.18, 0.08, 0.22]}>
+        <meshStandardMaterial color="#222" roughness={0.8} />
+      </RoundedBox>
+      <RoundedBox args={[0.5, 0.07, 0.16]} radius={0.02} position={[0, 0.08, -0.22]}>
+        <meshStandardMaterial color="#222" roughness={0.8} />
+      </RoundedBox>
+      <mesh position={[0, 0.09, 0.08]} rotation={[1.2, 0, 0]}>
+        <torusGeometry args={[0.06, 0.015, 8, 12]} />
+        <meshStandardMaterial color="#333" roughness={0.6} />
+      </mesh>
+      <RoundedBox args={[0.58, 0.015, 0.06]} radius={0.01} position={[0, 0.13, 0.14]}>
+        <meshStandardMaterial color="#444" roughness={0.7} />
+      </RoundedBox>
+    </group>
+  );
+}
 
 function CarModel() {
   const data = useVehicleStore((s) => s.currentData);
@@ -80,104 +242,160 @@ function CarModel() {
   const sigR = useRef<THREE.MeshStandardMaterial>(null);
   const headL = useRef<THREE.MeshStandardMaterial>(null);
   const headR = useRef<THREE.MeshStandardMaterial>(null);
+  const headLensL = useRef<THREE.MeshStandardMaterial>(null);
+  const headLensR = useRef<THREE.MeshStandardMaterial>(null);
 
   const wheelRot = useMemo(() => ((data?.speed ?? 0) / 180) * Math.PI * 2, [data?.speed]);
-  const steerAng = useMemo(() => ((data?.steeringAngle ?? 0) / 45) * 0.5, [data?.steeringAngle]);
+  const steerAng = useMemo(() => ((data?.steeringAngle ?? 0) / 45) * 0.55, [data?.steeringAngle]);
   const bodyCol = useMemo(() => {
-    if (!data) return '#3b82f6';
-    if (data.faultCodes.length > 0) return '#ef4444';
-    if (data.brakePressed) return '#f97316';
-    return '#3b82f6';
+    if (!data) return '#2563eb';
+    if (data.faultCodes.length > 0) return '#dc2626';
+    if (data.brakePressed) return '#ea580c';
+    return '#2563eb';
   }, [data?.faultCodes, data?.brakePressed]);
 
   useFrame(() => {
     if (brakeMat.current && data) {
-      brakeMat.current.color.lerp(data.brakePressed ? brakeBright : brakeColor, 0.2);
-      brakeMat.current.emissiveIntensity = data.brakePressed ? 2 : 0.3;
+      brakeMat.current.color.lerp(data.brakePressed ? brakeBright : brakeColor, 0.15);
+      brakeMat.current.emissiveIntensity = data.brakePressed ? 2.5 : 0.2;
     }
     if (sigL.current && data) {
       const on = data.turnSignal === 'left' || data.turnSignal === 'hazard';
-      sigL.current.emissiveIntensity = on ? 3 : 0;
-      sigL.current.opacity = on ? 1 : 0.3;
+      sigL.current.emissiveIntensity = on ? 4 : 0;
     }
     if (sigR.current && data) {
       const on = data.turnSignal === 'right' || data.turnSignal === 'hazard';
-      sigR.current.emissiveIntensity = on ? 3 : 0;
-      sigR.current.opacity = on ? 1 : 0.3;
+      sigR.current.emissiveIntensity = on ? 4 : 0;
     }
     if (headL.current && data) {
-      headL.current.emissiveIntensity = data.speed > 0.5 || data.brakePressed ? 1.5 : 0.3;
+      const on = data.speed > 0.5 || data.brakePressed;
+      headL.current.emissiveIntensity = on ? 2 : 0.4;
     }
     if (headR.current && data) {
-      headR.current.emissiveIntensity = data.speed > 0.5 || data.brakePressed ? 1.5 : 0.3;
+      const on = data.speed > 0.5 || data.brakePressed;
+      headR.current.emissiveIntensity = on ? 2 : 0.4;
+    }
+    if (headLensL.current && data) {
+      headLensL.current.opacity = 0.3 + (data.speed > 0.5 || data.brakePressed ? 0.4 : 0);
+    }
+    if (headLensR.current && data) {
+      headLensR.current.opacity = 0.3 + (data.speed > 0.5 || data.brakePressed ? 0.4 : 0);
     }
   });
 
+  const BODY_Y = 0.25;
+
   return (
     <group>
-      <mesh position={[0, 0.3, 0]} castShadow geometry={bodyGeo}>
-        <meshStandardMaterial color={bodyCol} metalness={0.6} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.55, -0.15]} castShadow geometry={cabinGeo}>
-        <meshStandardMaterial color={bodyCol} metalness={0.5} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.65, 0.35]} castShadow geometry={roofGeo}>
-        <meshStandardMaterial color="#1a1a2e" metalness={0.8} roughness={0.1} />
-      </mesh>
-      <mesh position={[0, 0.42, 0.55]} geometry={windshieldGeo}>
-        <meshStandardMaterial color="#1a1a2e" metalness={0.8} roughness={0.1} />
-      </mesh>
-      <mesh position={[0.35, 0.25, 0.55]} geometry={headlightGeo}>
-        <meshStandardMaterial
-          ref={headL}
-          color={headColor}
-          emissive={headColor}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-      <mesh position={[-0.35, 0.25, 0.55]} geometry={headlightGeo}>
-        <meshStandardMaterial
-          ref={headR}
-          color={headColor}
-          emissive={headColor}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-      <mesh position={[0.35, 0.25, -0.75]} geometry={taillightGeo}>
-        <meshStandardMaterial
-          ref={brakeMat}
-          color={brakeColor}
-          emissive={brakeColor}
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-      <mesh position={[-0.35, 0.25, -0.75]} geometry={taillightGeo}>
-        <meshStandardMaterial color={brakeColor} emissive={brakeColor} emissiveIntensity={0.3} />
-      </mesh>
-      <mesh position={[0.42, 0.25, 0.35]} geometry={taillightGeo}>
-        <meshStandardMaterial
-          ref={sigR}
-          color={signalAmber}
-          emissive={signalAmber}
-          emissiveIntensity={0}
-          transparent
-          opacity={0.3}
-        />
-      </mesh>
-      <mesh position={[-0.42, 0.25, 0.35]} geometry={taillightGeo}>
-        <meshStandardMaterial
-          ref={sigL}
-          color={signalAmber}
-          emissive={signalAmber}
-          emissiveIntensity={0}
-          transparent
-          opacity={0.3}
-        />
-      </mesh>
-      <Wheel pos={wFL} rotation={wheelRot} steer={steerAng} />
-      <Wheel pos={wFR} rotation={wheelRot} steer={steerAng} />
-      <Wheel pos={wRL} rotation={wheelRot} steer={0} />
-      <Wheel pos={wRR} rotation={wheelRot} steer={0} />
+      <group position={[0, BODY_Y, 0]}>
+        <CarBody color={bodyCol} />
+        <Cabin color={bodyCol} />
+        <Interior />
+        <mesh position={[0.3, 0.1, 0.97]} geometry={headlightGeo}>
+          <meshStandardMaterial
+            ref={headL}
+            color={headColor}
+            emissive={headColor}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+        <mesh position={[-0.3, 0.1, 0.97]} geometry={headlightGeo}>
+          <meshStandardMaterial
+            ref={headR}
+            color={headColor}
+            emissive={headColor}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+        <mesh position={[0.3, 0.1, 0.97]}>
+          <sphereGeometry args={[0.045, 10, 10]} />
+          <meshStandardMaterial
+            ref={headLensL}
+            color="#eee"
+            transparent
+            opacity={0.3}
+            roughness={0.1}
+            metalness={0.2}
+          />
+        </mesh>
+        <mesh position={[-0.3, 0.1, 0.97]}>
+          <sphereGeometry args={[0.045, 10, 10]} />
+          <meshStandardMaterial
+            ref={headLensR}
+            color="#eee"
+            transparent
+            opacity={0.3}
+            roughness={0.1}
+            metalness={0.2}
+          />
+        </mesh>
+        <mesh position={[0.36, 0.08, 0.95]} geometry={taillightGeo}>
+          <meshStandardMaterial
+            ref={sigR}
+            color={signalAmber}
+            emissive={signalAmber}
+            emissiveIntensity={0}
+          />
+        </mesh>
+        <mesh position={[-0.36, 0.08, 0.95]} geometry={taillightGeo}>
+          <meshStandardMaterial
+            ref={sigL}
+            color={signalAmber}
+            emissive={signalAmber}
+            emissiveIntensity={0}
+          />
+        </mesh>
+        <RoundedBox args={[0.08, 0.03, 0.02]} radius={0.01} position={[0.3, 0.1, -0.97]}>
+          <meshStandardMaterial
+            ref={brakeMat}
+            color={brakeColor}
+            emissive={brakeColor}
+            emissiveIntensity={0.3}
+          />
+        </RoundedBox>
+        <RoundedBox args={[0.08, 0.03, 0.02]} radius={0.01} position={[-0.3, 0.1, -0.97]}>
+          <meshStandardMaterial color={brakeColor} emissive={brakeColor} emissiveIntensity={0.3} />
+        </RoundedBox>
+        <RoundedBox args={[0.12, 0.02, 0.02]} radius={0.01} position={[0, 0.22, -0.96]}>
+          <meshStandardMaterial color={brakeColor} emissive={brakeColor} emissiveIntensity={0.3} />
+        </RoundedBox>
+        <mesh position={[0.24, 0.12, -0.95]}>
+          <boxGeometry args={[0.04, 0.04, 0.02]} />
+          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.2} />
+        </mesh>
+        <mesh position={[-0.24, 0.12, -0.95]}>
+          <boxGeometry args={[0.04, 0.04, 0.02]} />
+          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.2} />
+        </mesh>
+        <RoundedBox args={[0.06, 0.05, 0.02]} radius={0.01} position={[0.42, 0.24, 0.65]}>
+          <meshStandardMaterial color={bodyCol} metalness={0.4} roughness={0.4} />
+        </RoundedBox>
+        <RoundedBox args={[0.06, 0.05, 0.02]} radius={0.01} position={[-0.42, 0.24, 0.65]}>
+          <meshStandardMaterial color={bodyCol} metalness={0.4} roughness={0.4} />
+        </RoundedBox>
+        <mesh position={[0, 0.48, -0.3]}>
+          <cylinderGeometry args={[0.005, 0.003, 0.15, 6]} />
+          <meshStandardMaterial color="#666" metalness={0.5} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, 0.5, -0.3]}>
+          <sphereGeometry args={[0.012, 6, 6]} />
+          <meshStandardMaterial color="#444" />
+        </mesh>
+        <mesh position={[0, 0.04, -0.98]} rotation={[0.2, 0, 0]}>
+          <cylinderGeometry args={[0.01, 0.015, 0.06, 6]} />
+          <meshStandardMaterial color="#555" metalness={0.6} roughness={0.5} />
+        </mesh>
+        <RoundedBox args={[0.06, 0.015, 0.09]} radius={0.005} position={[0, 0.06, 0.99]}>
+          <meshStandardMaterial color="#f0f0f0" roughness={0.6} />
+        </RoundedBox>
+        <RoundedBox args={[0.06, 0.015, 0.09]} radius={0.005} position={[0, 0.06, -0.99]}>
+          <meshStandardMaterial color="#eee" roughness={0.6} />
+        </RoundedBox>
+      </group>
+      <Wheel pos={wPos.fl} rotation={wheelRot} steer={steerAng} />
+      <Wheel pos={wPos.fr} rotation={wheelRot} steer={steerAng} />
+      <Wheel pos={wPos.rl} rotation={wheelRot} steer={0} />
+      <Wheel pos={wPos.rr} rotation={wheelRot} steer={0} />
     </group>
   );
 }
@@ -538,30 +756,25 @@ function SceneContent() {
 }
 
 export default function Vehicle3D() {
+  const { controlRef, setControl } = useVehicleControl();
+
   return (
     <div className="vehicle-3d-page">
       <div className="page-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1>3D 数字孪生</h1>
-            <p>车辆实时状态三维可视化 / 拖拽旋转查看</p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-ghost" onClick={emitToggleDriving}>
-              切换驾驶
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={emitReset}>
-              重置
-            </button>
-          </div>
+        <div>
+          <h1>3D 数字孪生</h1>
+          <p>车辆实时状态三维可视化 / 拖拽旋转查看 / WASD 驾驶</p>
         </div>
       </div>
-      <div className="canvas-container">
-        <Canvas shadows camera={{ position: [3, 2.5, 5], fov: 45 }} gl={{ antialias: true }}>
-          <Suspense fallback={null}>
-            <SceneContent />
-          </Suspense>
-        </Canvas>
+      <div className="vehicle-3d-body">
+        <div className="canvas-container">
+          <Canvas shadows camera={{ position: [3, 2.5, 5], fov: 45 }} gl={{ antialias: true }}>
+            <Suspense fallback={null}>
+              <SceneContent />
+            </Suspense>
+          </Canvas>
+        </div>
+        <ControlPanel controlRef={controlRef} setControl={setControl} />
       </div>
     </div>
   );
