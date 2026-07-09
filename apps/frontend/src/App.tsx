@@ -4,6 +4,7 @@ import { useVehicleData } from './hooks/useVehicleData';
 const navItems = [
   { path: '/dashboard', label: '仪表盘', icon: '📊' },
   { path: '/vehicle-3d', label: '3D 孪生', icon: '🚗' },
+  { path: '/builder', label: '搭建平台', icon: '🧩' },
   { path: '/logs', label: '故障日志', icon: '📋' },
 ];
 

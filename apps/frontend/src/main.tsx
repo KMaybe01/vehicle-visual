@@ -7,6 +7,7 @@ import './styles/global.css';
 const Dashboard2D = lazy(() => import('./pages/dashboard-2d/Dashboard2D'));
 const Vehicle3D = lazy(() => import('./pages/vehicle-3d/Vehicle3D'));
 const LogManage = lazy(() => import('./pages/log-manage/LogManage'));
+const VisualBuilder = lazy(() => import('./pages/visual-builder/VisualBuilder'));
 
 const fallback = (
   <div className="loading-screen">
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="dashboard" element={<Dashboard2D />} />
             <Route path="vehicle-3d" element={<Vehicle3D />} />
             <Route path="logs" element={<LogManage />} />
+            <Route path="builder" element={<VisualBuilder />} />
           </Route>
         </Routes>
       </Suspense>

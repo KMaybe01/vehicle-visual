@@ -2,8 +2,6 @@ import { memo, useEffect, useRef, useState } from 'react';
 import PlaybackBar from '../../components/PlaybackBar/PlaybackBar';
 import { useDataWorker } from '../../hooks/useDataWorker';
 import { emitReset, emitToggleDriving } from '../../hooks/useVehicleData';
-import PanelManager from '../../panels/PanelManager';
-import { PRESETS } from '../../panels/presets';
 import { useVehicleStore } from '../../store';
 import { TOPIC, useTopic } from '../../topics';
 import type { VehicleState } from '../../types';
@@ -59,12 +57,9 @@ function Dashboard2D() {
   const data = useVehicleStore((s) => s.currentData);
   const history = useVehicleStore((s) => s.historyData);
   const playbackData = useTopic<VehicleState>(TOPIC.VEHICLE_STATE);
-  const [layoutPreset, setLayoutPreset] = useState<string>('monitoring');
 
   const chartHistory: VehicleState[] = useThrottledValue(history, 500);
   const displayData = playbackData ?? data;
-
-  const currentPreset = PRESETS[layoutPreset] ?? PRESETS.monitoring;
 
   if (!displayData) {
     return (
@@ -81,19 +76,9 @@ function Dashboard2D() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1>车载仪表盘</h1>
-            <p>低代码可视化搭建平台</p>
+            <p>实时车况数据监控</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {Object.entries(PRESETS).map(([key, preset]) => (
-              <button
-                key={key}
-                type="button"
-                className={`btn ${layoutPreset === key ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setLayoutPreset(key)}
-              >
-                {preset.label}
-              </button>
-            ))}
             <button type="button" className="btn btn-ghost" onClick={emitToggleDriving}>
               切换驾驶
             </button>
@@ -157,14 +142,6 @@ function Dashboard2D() {
         <aside className="dashboard-sidebar">
           <VehicleStatus data={displayData} />
         </aside>
-      </div>
-
-      <div className="dashboard-section">
-        <h2 className="dashboard-section-title">
-          可视化搭建面板
-          <span className="dashboard-section-badge">低代码 · 可配置</span>
-        </h2>
-        <PanelManager key={layoutPreset} initialLayout={currentPreset.layout} />
       </div>
     </div>
   );
