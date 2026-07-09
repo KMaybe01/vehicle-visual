@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "analyze": "vite build && npx vite-bundle-analyzer dist/stats.html",
     "preview": "vite preview",
     "lint": "biome check src/"
   },
@@ -28,6 +29,7 @@
     "@types/three": "^0.171.0",
     "@vitejs/plugin-react": "^6.0.0",
     "babel-plugin-react-compiler": "^1.0.0",
+    "rollup-plugin-visualizer": "^7.0.1",
     "typescript": "^5.7.2",
     "vite": "^8.0.0"
   }

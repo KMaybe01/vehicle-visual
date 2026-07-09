@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { FaultRecord, VehicleState } from './types';
 
-type TopicValue = VehicleState | VehicleState[] | FaultRecord[] | boolean | null;
+export type TopicValue = VehicleState | VehicleState[] | FaultRecord[] | boolean | null;
 
 type Listener = (value: TopicValue) => void;
 

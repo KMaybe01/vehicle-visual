@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import PlaybackBar from '../../components/PlaybackBar/PlaybackBar';
+import { useDataWorker } from '../../hooks/useDataWorker';
 import { emitReset, emitToggleDriving } from '../../hooks/useVehicleData';
+import PanelManager from '../../panels/PanelManager';
+import { PRESETS } from '../../panels/presets';
 import { useVehicleStore } from '../../store';
 import { TOPIC, useTopic } from '../../topics';
 import type { VehicleState } from '../../types';
@@ -8,6 +11,25 @@ import GaugeChart from './GaugeChart';
 import TrendChart from './TrendChart';
 import VehicleStatus from './VehicleStatus';
 import './Dashboard2D.css';
+
+function StatsBar() {
+  const history = useVehicleStore((s) => s.historyData);
+  const stats = useDataWorker(history);
+
+  if (!stats || history.length < 2) return null;
+
+  return (
+    <div className="stats-bar">
+      <span>样本: {stats.sampleCount}</span>
+      <span>时长: {(stats.durationMs / 1000).toFixed(0)}s</span>
+      <span>平均车速: {stats.avgSpeed.toFixed(1)} km/h</span>
+      <span>最高车速: {stats.maxSpeed.toFixed(1)} km/h</span>
+      <span>平均转速: {stats.avgRpm.toFixed(0)} r/min</span>
+    </div>
+  );
+}
+
+const MemoStatsBar = memo(StatsBar);
 
 function useThrottledValue<T>(value: T, intervalMs: number): T {
   const [throttled, setThrottled] = useState(value);
@@ -33,13 +55,16 @@ function useThrottledValue<T>(value: T, intervalMs: number): T {
   return throttled;
 }
 
-export default function Dashboard2D() {
+function Dashboard2D() {
   const data = useVehicleStore((s) => s.currentData);
   const history = useVehicleStore((s) => s.historyData);
   const playbackData = useTopic<VehicleState>(TOPIC.VEHICLE_STATE);
+  const [layoutPreset, setLayoutPreset] = useState<string>('monitoring');
 
   const chartHistory: VehicleState[] = useThrottledValue(history, 500);
   const displayData = playbackData ?? data;
+
+  const currentPreset = PRESETS[layoutPreset] ?? PRESETS.monitoring;
 
   if (!displayData) {
     return (
@@ -56,9 +81,19 @@ export default function Dashboard2D() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1>车载仪表盘</h1>
-            <p>实时车况数据监控</p>
+            <p>低代码可视化搭建平台</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            {Object.entries(PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                type="button"
+                className={`btn ${layoutPreset === key ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setLayoutPreset(key)}
+              >
+                {preset.label}
+              </button>
+            ))}
             <button type="button" className="btn btn-ghost" onClick={emitToggleDriving}>
               切换驾驶
             </button>
@@ -70,6 +105,7 @@ export default function Dashboard2D() {
       </div>
 
       <PlaybackBar />
+      <MemoStatsBar />
 
       <div className="dashboard-grid">
         <div className="dashboard-main">
@@ -107,7 +143,6 @@ export default function Dashboard2D() {
               color="#06b6d4"
             />
           </div>
-
           <div className="charts-row">
             <div className="card" style={{ flex: 1 }}>
               <div className="card-title">车速趋势 (最近60秒)</div>
@@ -119,11 +154,20 @@ export default function Dashboard2D() {
             </div>
           </div>
         </div>
-
         <aside className="dashboard-sidebar">
           <VehicleStatus data={displayData} />
         </aside>
       </div>
+
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">
+          可视化搭建面板
+          <span className="dashboard-section-badge">低代码 · 可配置</span>
+        </h2>
+        <PanelManager key={layoutPreset} initialLayout={currentPreset.layout} />
+      </div>
     </div>
   );
 }
+
+export default memo(Dashboard2D);

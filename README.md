@@ -4,7 +4,7 @@
 
 ## ✨ 核心特性
 
-*   **2D 仪表盘**：包含基于 Canvas/ECharts 的车速、转速、水温、电压表盘，以及时序趋势曲线（60秒滑动窗口）。支持车门、胎压、状态面板监测。内置 PlaybackBar 支持历史数据回放。
+*   **2D 仪表盘（低代码可视化搭建）**：包含基于 Canvas/ECharts 的车速、转速、水温、电压表盘，以及时序趋势曲线（60秒滑动窗口）。支持车门、胎压、状态面板监测。内置 **Panel 面板系统**，支持运行时动态增删面板、绑定数据话题、切换布局预设，实现类似 Foxglove Studio 的低代码搭建体验。内置 PlaybackBar 支持历史数据回放。
 *   **3D 数字孪生**：基于 ThreeJS/React-Three-Fiber 实现的 3D 车辆模型，带滚动驾驶环境（道路标线动画、InstancedMesh 建筑物/树木/路灯），实时联动车况数据（车速驱动场景滚动、刹车灯/转向灯/大灯动画、转向轮偏转），使用 Clock + `useFrame(delta)` 实现帧率无关的平滑动画。
 *   **故障监控与管理**：实时解析 CAN 故障码并分类（轻微/一般/严重），支持故障日志记录、清除、历史查询及弹窗告警。
 *   **数据录制与回放**：支持运行中车况数据的实时录制、持久化及 JSON/MCAP 格式导出与管理。
@@ -28,6 +28,8 @@
 | **实时通信** | **Socket.IO** | 前后端基于 WebSocket 的低延迟实时数据推送 |
 | **Foxglove 协议** | **@foxglove/ws-protocol** | Foxglove Desktop 兼容的 WebSocket 数据桥接 (`ws://localhost:3101`) |
 | **MCAP 导出** | **@mcap/core** | 行业标准 MCAP 格式录制导出，兼容 Foxglove/WebViz 等工具 |
+| **性能优化** | **Web Worker** | 统计计算离线程处理，避免阻塞 UI 渲染 |
+| **构建分析** | **rollup-plugin-visualizer** | 可视化 Bundle 组成分析 (`bun run analyze`) |
 | **数据存储** | **SQLite** | 轻量级本地数据库，存储故障及录制配置数据 |
 | **持续集成** | **GitLab CI** | 内置 `.gitlab-ci.yml` 自动化依赖检查、格式化与构建 |
 
@@ -48,13 +50,26 @@ vehicle-visual/
 │   ├── frontend/             # [React] 可视化前端
 │   │   ├── src/
 │   │   │   ├── components/
-│   │   │   │   ├── Panel/        # Foxglove 风格 Panel 容器 (可拖拽工具栏)
-│   │   │   │   └── PlaybackBar/ # 时间轴回放控制器 (播放/暂停/速率)
-│   │   │   ├── topics.ts        # Topic 数据总线 (发布/订阅)
+│   │   │   │   ├── Panel/          # Foxglove 风格 Panel 容器
+│   │   │   │   ├── PlaybackBar/    # 时间轴回放控制器
+│   │   │   │   ├── DataTable/      # 虚拟滚动数据表格
+│   │   │   │   ├── JsonViewer/     # JSON 树查看器
+│   │   │   │   ├── SettingsDialog/ # 面板配置对话框
+│   │   │   │   └── index.ts        # 组件库 barrel export
+│   │   │   ├── panels/
+│   │   │   │   ├── registry.ts     # Panel 注册表 (低代码核心)
+│   │   │   │   ├── PanelManager.tsx # 面板管理器 (添加/删除/预设)
+│   │   │   │   ├── PanelFrame.tsx   # 面板框架 (标题/工具/设置)
+│   │   │   │   ├── types.ts        # Panel 配置类型
+│   │   │   │   ├── presets.ts      # 布局预设
+│   │   │   │   └── panels/         # 各面板实现
+│   │   │   ├── workers/
+│   │   │   │   └── dataWorker.ts   # Web Worker 离线程数据处理
+│   │   │   ├── topics.ts          # Topic 数据总线 (发布/订阅)
 │   │   │   └── pages/
-│   │   │       ├── dashboard-2d/ # 2D 仪表盘面板
-│   │   │       ├── vehicle-3d/   # 3D 数字孪生面板
-│   │   │       └── log-manage/   # 故障日志与录制管理界面
+│   │   │       ├── dashboard-2d/   # 2D 仪表盘面板
+│   │   │       ├── vehicle-3d/     # 3D 数字孪生面板
+│   │   │       └── log-manage/     # 故障日志与录制管理界面
 │   └── desktop/              # [Electron] 桌面客户端外壳
 ├── packages/
 │   └── can-simulator/        # [Library] CAN 数据模拟器及公共类型定义
@@ -91,7 +106,7 @@ cd apps/desktop
 bun run dev
 ```
 
-> **注意**: 前端默认对每 50ms 到达的 WebSocket 数据做了 **200ms 限流**，并使用 **RingBuffer** 存储最近 500 条历史记录，避免高频更新导致浏览器 OOM。如需调整，修改 `apps/frontend/src/hooks/useVehicleData.ts` 中的 `THROTTLE_MS` 和 `apps/frontend/src/store.ts` 中的 `MAX_HISTORY`。
+> **性能优化**: 前端对 50ms 高频 WebSocket 数据做 **200ms 限流** + **RingBuffer** (500条) 防止 OOM；统计计算移至 **Web Worker** 离线程执行；ECharts 采用 **downsampling** 控制渲染数据点（120点上限）；React 组件使用 **React.memo + 字段级比较** 减少重渲染。
 
 *   **Web 预览**: 浏览器打开 `http://localhost:5173`
 *   **后端 API**: 默认运行于 `http://localhost:3100`
@@ -108,6 +123,7 @@ bun run build         # 执行所有子项目的生产环境构建
 bun run lint          # 使用 Biome 进行全项目代码规范检查
 bun run format        # 使用 Biome 进行全项目代码格式化修复
 bun run format:check  # 仅检查代码格式是否合规 (CI 环境常用)
+bun run analyze       # 构建并生成 Bundle 体积分析报告 (dist/stats.html)
 ```
 
 ---
@@ -155,10 +171,31 @@ MCAP 文件可导入 Foxglove Desktop、WebViz 等工具进行离线分析。
 | `/vehicle/state` | `VehicleState` | 当前车况数据 |
 | `/vehicle/history` | `VehicleState[]` | 历史数据 (最近 500 条) |
 
-### Panel 容器 & 回放控制器
+### 低代码 Panel 搭建系统
 
-- **`<Panel>`**：通用面板容器组件，提供标题栏、工具栏插槽，替换原始 `.card` 模式
-- **`<PlaybackBar>`**：时间轴回放控件，支持 **播放/暂停**、**0.25x–5x 速率调节**，通过 topic 推送回放数据，所有订阅面板自动响应
+借鉴 Foxglove Studio 的 Panel 架构，实现了完整的低代码可视化搭建系统：
+
+**`src/panels/`**
+- **PanelRegistry**：中心化注册表，新面板类型通过 `registerPanel()` 注册即可使用
+- **PanelManager**：运行时管理面板列表，支持添加/删除/配置
+- **PanelFrame**：统一的面板容器（标题、图标、话题标签、工具栏、设置按钮）
+- **Presets**：预设布局（监控/调试/完整），一键切换
+- **SettingsDialog**：每个面板可配置绑定的**数据话题**、**标题**等参数
+
+**内置面板类型**
+
+| 类型 | 图标 | 数据话题 | 功能 |
+| :--- | :--- | :--- | :--- |
+| `gauges` | 📊 | `/vehicle/state` | 仪表盘 (车速/转速/水温/电压等，可配置指标) |
+| `trend` | 📈 | `/vehicle/history` | 趋势图 (可配置数据字段/颜色/单位) |
+| `status` | 🚗 | `/vehicle/state` | 车辆状态面板 (车门/胎压/档位/故障码) |
+| `data-table` | 📋 | `/vehicle/history` | 数据明细表格 (虚拟滚动，大数据量流畅) |
+| `json-viewer` | 📄 | `/vehicle/state` | 原始 JSON 查看器 (可折叠树) |
+
+### PlaybackBar 回放控制器
+
+- 时间轴回放控件，支持 **播放/暂停**、**0.25x–5x 速率调节**
+- 通过 topic 推送回放数据，所有订阅面板自动响应
 
 ---
 
