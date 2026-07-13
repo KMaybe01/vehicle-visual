@@ -769,7 +769,7 @@ body {
 }
 
 .stats-bar span::before {
-  content: '';
+  content: "";
   width: 4px;
   height: 4px;
   background: var(--accent-blue);
